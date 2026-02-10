@@ -1,33 +1,59 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, JSON, Text, Numeric, TIMESTAMP
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-from database import Base
+# routes/project.py
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from typing import List
 
-class Project(Base):
-    __tablename__ = "projects"
+from database import get_db
+from models.project import Project
+from schemas.project import ProjectCreate, ProjectUpdate, ProjectOut
 
-    id = Column(Integer, primary_key=True)
-    profile_id = Column(Integer, ForeignKey("profiles.id"), nullable=False)
+router = APIRouter(prefix="/projects", tags=["Projects"])
 
-    # ⚫ CONFORME CAHIER DES CHARGES
-    year = Column(Integer, nullable=False)
-    title = Column(String(500), nullable=False)
-    coauthor = Column(JSON, nullable=False, default=list)
+@router.get("/", response_model=List[ProjectOut])
+def get_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """Récupérer tous les projets"""
+    projects = db.query(Project).offset(skip).limit(limit).all()
+    return projects
 
-    # 🟢 OPTIONNELS
-    description = Column(Text)
-    budget = Column(Numeric(10, 2))
-    status = Column(String(50))
+@router.post("/", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)
+def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
+    """Créer un nouveau projet"""
+    db_project = Project(**project.dict())
+    db.add(db_project)
+    db.commit()
+    db.refresh(db_project)
+    return db_project
 
-    created_at = Column(TIMESTAMP, server_default=func.now())
+@router.get("/{project_id}", response_model=ProjectOut)
+def get_project(project_id: int, db: Session = Depends(get_db)):
+    """Récupérer un projet par ID"""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    return project
 
-    # ======================
-    # RELATIONS
-    # ======================
-    profile = relationship("Profile", back_populates="projects")
+@router.put("/{project_id}", response_model=ProjectOut)
+def update_project(project_id: int, project_update: ProjectUpdate, db: Session = Depends(get_db)):
+    """Mettre à jour un projet"""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    update_data = project_update.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(project, field, value)
+    
+    db.commit()
+    db.refresh(project)
+    return project
 
-    comments = relationship(
-        "Comment",
-        back_populates="project",
-        cascade="all, delete-orphan"
-    )
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project(project_id: int, db: Session = Depends(get_db)):
+    """Supprimer un projet"""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    db.delete(project)
+    db.commit()
+    return None

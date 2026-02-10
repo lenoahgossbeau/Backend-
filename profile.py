@@ -1,85 +1,99 @@
-﻿from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime
-from sqlalchemy.orm import relationship
-from database import Base
-from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from schemas.profile import ProfileCreate, ProfileOut, ProfileUpdate
+from models.profile import Profile
+from models.audit import Audit
+from database import get_db
+from auth.dependencies import get_current_user
+from models.user import User
 
-class Profile(Base):
-    __tablename__ = "profiles"
+router = APIRouter(
+    prefix="/profiles",
+    tags=["Profiles"]
+)
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+# ================== CRÉER MON PROFIL ==================
+@router.post("/", response_model=ProfileOut)
+def create_profile(profile: ProfileCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    new_profile = Profile(
+        **profile.dict(exclude={"user_id"}),  # user_id injecté automatiquement
+        user_id=current_user.id
+    )
+    db.add(new_profile)
+    db.commit()
+    db.refresh(new_profile)
 
-    # Informations personnelles (optionnelles)
-    first_name = Column(String(50))
-    last_name = Column(String(50))
-    gender = Column(String(10))
-    
-    # ⚫ CONFORME CAHIER DES CHARGES
-    grade = Column(String(50), nullable=False)
-    specialite = Column(String(100), nullable=True)
-    
-    # Optionnels
-    diplome = Column(String(100))
-    description = Column(Text)
-    profile_picture = Column(String(500))
-    
-    # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    audit_log = Audit(
+        user_id=current_user.id,
+        user_role=current_user.role,
+        action_description="Profil créé"
+    )
+    db.add(audit_log)
+    db.commit()
 
-    # =========================
-    # RELATIONS
-    # =========================
-    user = relationship("User", back_populates="profile")
+    return new_profile
 
-    # Relations 1→N (CONFORME CAHIER DES CHARGES)
-    publications = relationship(
-        "Publication",
-        back_populates="profile",
-        cascade="all, delete-orphan"
+# ================== LIRE UN PROFIL ==================
+@router.get("/{profile_id}", response_model=ProfileOut)
+def get_profile(
+    profile_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+    ):
+
+    profile = (
+        db.query(Profile)
+        .filter(
+            Profile.id == profile_id,
+            Profile.user_id == current_user.id
+        )
+        .first()
     )
 
-    projects = relationship(
-        "Project",
-        back_populates="profile",
-        cascade="all, delete-orphan"
-    )
+    if not profile:
+        raise HTTPException(
+            status_code=404,
+            detail="Profil non trouvé ❌"
+        )
 
-    cours = relationship(
-        "Cours",
-        back_populates="profile",
-        cascade="all, delete-orphan"
-    )
+    return profile
 
-    distinctions = relationship(
-        "Distinction",
-        back_populates="profile",
-        cascade="all, delete-orphan"
-    )
+# ================== METTRE À JOUR MON PROFIL ==================
+@router.put("/me", response_model=ProfileOut)
+def update_my_profile(data: ProfileUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profil introuvable ❌")
+    for key, value in data.dict(exclude_unset=True).items():
+        setattr(profile, key, value)
+    db.commit()
+    db.refresh(profile)
 
-    academic_careers = relationship(
-        "AcademicCareer", 
-        back_populates="profile",
-        cascade="all, delete-orphan"
+    audit_log = Audit(
+        user_id=current_user.id,
+        user_role=current_user.role,
+        action_description="Profil mis à jour"
     )
-    
-    media_artefacts = relationship(
-        "MediaArtefact", 
-        back_populates="profile",
-        cascade="all, delete-orphan"
-    )
+    db.add(audit_log)
+    db.commit()
 
-    messages = relationship(
-        "MessageContact",
-        back_populates="profile",
-        cascade="all, delete-orphan"
-    )
+    return profile
 
-    subscription = relationship(
-        "Subscription",
-        uselist=False,
-        back_populates="profile"
+# ================== SUPPRIMER MON PROFIL ==================
+@router.delete("/me")
+def delete_my_profile(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profil introuvable ❌")
+    db.delete(profile)
+    db.commit()
+
+    audit_log = Audit(
+        user_id=current_user.id,
+        user_role=current_user.role,
+        action_description="Profil supprimé"
     )
-    
-    def __repr__(self):
-        return f"<Profile(id={self.id}, user_id={self.user_id}, grade={self.grade})>"
+    db.add(audit_log)
+    db.commit()
+
+    return {"message": "Profil supprimé ✅"}
