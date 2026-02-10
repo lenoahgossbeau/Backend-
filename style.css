@@ -1,0 +1,487 @@
+/* ===== Style global ===== */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Conteneur principal */
+main.container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    flex: 1 0 auto;
+}
+
+/* Titres */
+h1 {
+    color: #2c3e50;
+    text-align: center;
+    margin-top: 40px;
+}
+
+/* Paragraphes */
+p {
+    font-size: 18px;
+    color: #555;
+    text-align: center;
+}
+/* === Navigation === */
+.navbar { 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    flex-wrap: wrap; 
+    gap: 10px; 
+    background-color: #2c3e50; 
+    padding: 10px 0; 
+}
+
+.navbar a { 
+    text-decoration: none; 
+    color: #fff; 
+    font-weight: bold; 
+    padding: 8px 15px; 
+    border-radius: 5px; 
+    transition: all 0.3s ease; 
+} 
+
+.navbar a:hover { 
+    background-color: #3498db; 
+    box-shadow: 0px 4px 6px rgba(0,0,0,0.2); 
+}
+
+.navbar a.active { 
+    background-color: #2980b9; 
+    box-shadow: 0px 4px 6px rgba(0,0,0,0.2); 
+}
+
+/* Sélecteur de langue */
+.navbar .lang-switch { 
+    margin-left: 20px; 
+    opacity: 0.85; 
+    display: flex; 
+    gap: 10px; 
+} 
+
+.navbar .lang-switch a { 
+    font-size: 14px; 
+    padding: 5px 10px; 
+} 
+
+.navbar .lang-switch a.active { 
+    font-weight: bold; 
+    text-decoration: underline;
+}
+/* === Header === */
+header.site-header {
+    background-color: #2c3e50;
+    color: #fff;
+    padding: 20px 0;
+    text-align: center;
+    box-shadow: 0px 4px 6px rgba(0,0,0,0.2);
+}
+
+header .logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+header .logo img {
+    height: 50px;
+    width: auto;
+}
+
+header .logo h1 {
+    font-size: 28px;
+    margin: 0;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+/* === Footer === */
+footer.site-footer {
+    background-color: #2c3e50;
+    color: #fff;
+    text-align: center;
+    padding: 15px;
+    margin-top: 40px;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+/* === Formulaires === */
+form {
+    display: flex;
+    flex-direction: column;
+    max-width: 400px;
+    margin: 20px auto;
+    gap: 10px;
+}
+
+input, textarea {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    color: #2c3e50;
+    background-color: #fff;
+    font-size: 14px;
+}
+
+textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #888;
+    font-style: italic;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+/* Boutons génériques */
+button, .btn {
+    background-color: #3498db;
+    color: #fff;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+}
+
+button:hover, .btn:hover {
+    background-color: #2980b9;
+}
+
+/* Carte formulaire */
+.form-card {
+    background-color: #fff;
+    padding: 25px;
+    max-width: 500px;
+    margin: 30px auto;
+    border-radius: 10px;
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Message de confirmation */
+.confirmation {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 15px;
+    background-color: #eafaf1;
+    border: 2px solid #2ecc71;
+    border-radius: 8px;
+    color: #2c3e50;
+    font-weight: bold;
+    text-align: center;
+    box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+    animation: fadeIn 0.8s ease-in-out;
+}
+
+/* Message d'erreur */
+.error-message {
+    max-width: 500px;
+    margin: 15px auto;
+    padding: 12px;
+    background-color: #fdecea;
+    border: 2px solid #e74c3c;
+    border-radius: 8px;
+    color: #c0392b;
+    font-weight: bold;
+    text-align: center;
+    box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+    animation: shake 0.4s ease-in-out;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shake {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(5px); }
+    75% { transform: translateX(-5px); }
+    100% { transform: translateX(0); }
+}
+/* === Modal === */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.6);
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 500px;
+    box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
+    animation: zoomIn 0.4s ease;
+}
+
+@keyframes zoomIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: #e74c3c;
+}
+
+/* === Champ mot de passe moderne === */
+.password-wrapper {
+    position: relative;
+}
+
+.password-wrapper input {
+    width: 100%;
+    padding-right: 40px;
+}
+
+.toggle-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    cursor: pointer;
+    transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.toggle-icon:hover {
+    color: #3498db;
+    transform: translateY(-50%) scale(1.2);
+}
+/* === Portfolio grid === */
+.portfolio-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    width: 90%;
+    margin: 30px auto;
+}
+
+.card {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0px 8px 18px rgba(0,0,0,0.15);
+}
+
+.card img {
+    max-width: 100%;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.card h2 {
+    font-size: 20px;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.card p {
+    font-size: 16px;
+    color: #555;
+    margin-bottom: 15px;
+}
+
+.card .btn {
+    display: inline-block;
+    background-color: #3498db;
+    color: #fff;
+    padding: 10px 15px;
+    border-radius: 5px;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+}
+
+.card .btn:hover {
+    background-color: #2980b9;
+}
+/* === Tableau des messages === */
+table {
+    width: 90%;
+    margin: 30px auto;
+    border-collapse: collapse;
+    font-size: 16px;
+    background-color: #fff;
+    box-shadow: 0px 4px 8px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+table th, table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+table th {
+    background-color: #3498db;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+table tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+table tr:hover {
+    background-color: #eaf2f8;
+    transition: background-color 0.3s ease;
+    cursor: pointer;
+}
+
+/* Colonnes Email et Message avec ellipsis */
+table td:nth-child(3),
+table td:nth-child(4) {
+    max-width: 250px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Fix footer bas de page sur contenus courts */
+html, body {
+    height: 100%;
+}
+
+/* === Responsive design === */
+@media (max-width: 600px) {
+    .navbar {
+        flex-direction: column;
+        padding: 10px;
+    }
+
+    .navbar a {
+        margin: 5px 0;
+        font-size: 16px;
+    }
+
+    h1 {
+        font-size: 22px;
+    }
+
+    p {
+        font-size: 16px;
+    }
+
+    footer.site-footer {
+        font-size: 12px;
+        padding: 10px;
+    }
+
+    table {
+        font-size: 14px;
+    }
+
+    table th, table td {
+        padding: 8px;
+    }
+
+    table td:nth-child(3),
+    table td:nth-child(4) {
+        max-width: 150px;
+    }
+
+    .portfolio-grid {
+        width: 95%;
+        gap: 15px;
+    }
+
+    .card {
+        padding: 15px;
+    }
+
+    .card h2 {
+        font-size: 18px;
+    }
+
+    .card p {
+        font-size: 15px;
+    }
+}
+
+/* === Bandeau cookies === */
+.cookie-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: #2c3e50;
+    color: #fff;
+    text-align: center;
+    padding: 15px;
+    box-shadow: 0px -4px 6px rgba(0,0,0,0.2);
+    z-index: 2000;
+    font-size: 14px;
+}
+
+.cookie-banner p {
+    margin: 0 0 10px 0;
+    font-weight: 500;
+}
+
+.cookie-banner button {
+    margin: 0 10px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 5px;
+    background: #3498db;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.cookie-banner button:hover {
+    background: #2980b9;
+}
