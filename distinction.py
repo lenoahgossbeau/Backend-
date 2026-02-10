@@ -1,0 +1,15 @@
+from sqlalchemy import Column, Integer, String, ForeignKey, Text
+from sqlalchemy.orm import relationship
+from database import Base
+
+class Distinction(Base):
+    __tablename__ = "distinctions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    # ⚠️ CORRECTION: Ajouter nullable=False
+    profile_id = Column(Integer, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False)
+    year = Column(Integer, nullable=False)  # ✅ Ajouter nullable=False
+    title = Column(String(255), nullable=False)  # ✅ Ajouter nullable=False
+    description = Column(Text, nullable=True)  # ✅ Changer String en Text
+
+    profile = relationship("Profile", back_populates="distinctions")
