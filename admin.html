@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+
+{% block content %}
+<h1>{{ t['admin_title'] }}</h1>
+<p>{{ t['admin_description'] }}</p>
+<ul>
+    <li><a href="{{ url_for('messages') }}">{{ t['admin_link_messages'] }}</a></li>
+    <li><a href="{{ url_for('portfolio') }}">{{ t['admin_link_projects'] }}</a></li>
+</ul>
+{% endblock %}

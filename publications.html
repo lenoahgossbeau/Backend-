@@ -1,0 +1,164 @@
+<!-- templates/publications.html - VERSION CORRIGÉE -->
+{% extends "base.html" %}
+
+{% block title %}{{ t.get('publications_title', 'Publications') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="form-card">
+        <h1>{{ t.get('publications_title', 'Publications') }}</h1>
+        
+        <!-- Message si aucune publication -->
+        {% if not publications %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            {{ t.get('publications_none', 'No publications available yet.') }}
+        </div>
+        {% else %}
+        
+        <!-- Filtres -->
+        <div class="filters mb-4">
+            <div class="btn-group" role="group">
+                <button onclick="filterPublications('all')" class="btn btn-sm btn-outline-primary">
+                    {{ t.get('publications_filter_all', 'All') }}
+                </button>
+                <button onclick="filterPublications('recent')" class="btn btn-sm btn-outline-primary">
+                    {{ t.get('publications_filter_recent', 'Recent (2023+)') }}
+                </button>
+            </div>
+            
+            <div class="mt-2">
+                <input type="number" id="yearFilter" min="2000" max="2030" 
+                       placeholder="{{ t.get('publications_filter_year', 'Filter by year') }}"
+                       onchange="filterByYear(this.value)" 
+                       class="form-control form-control-sm d-inline-block w-auto">
+            </div>
+        </div>
+        
+        <!-- Liste des publications -->
+        <div id="publications-container">
+            {% for pub in publications %}
+            <div class="card mb-3 publication-card" data-year="{{ pub.year }}" data-journal="{{ pub.journal or '' }}">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-primary">{{ pub.year }}</span>
+                        {% if pub.journal %}
+                        <span class="badge bg-info text-dark">{{ pub.journal }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <h5 class="card-title">{{ pub.title }}</h5>
+                    
+                    <!-- COAUTEURS -->
+                    <div class="mb-3">
+                        <strong>{{ t.get('publications_authors', 'Authors:') }}</strong>
+                        {% if pub.coauthors_formatted %}
+                        <span class="text-muted">{{ pub.coauthors_formatted }}</span>
+                        {% elif pub.coauthor and pub.coauthor is iterable %}
+                        <span class="text-muted">{{ pub.coauthor|join(', ') }}</span>
+                        {% else %}
+                        <span class="text-muted">{{ t.get('publications_no_authors', 'No authors specified') }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- DOI et liens -->
+                    {% if pub.doi %}
+                    <div class="mb-3">
+                        <a href="https://doi.org/{{ pub.doi }}" target="_blank" class="text-decoration-none">
+                            <span class="badge bg-secondary">
+                                <i class="bi bi-link-45deg"></i> DOI: {{ pub.doi }}
+                            </span>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-footer">
+                    <small class="text-muted">
+                        ID: {{ pub.id }}
+                        {% if pub.created_at %}
+                        • {{ t.get('publications_added', 'Added') }}: {{ pub.created_at.strftime('%d/%m/%Y') }}
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Statistiques -->
+        <div class="mt-5 p-3 bg-light rounded">
+            <h4>{{ t.get('publications_statistics', 'Statistics') }}</h4>
+            <div class="row text-center">
+                <div class="col">
+                    <div class="display-6">{{ publications|length }}</div>
+                    <small class="text-muted">{{ t.get('publications_total', 'Total publications') }}</small>
+                </div>
+                <div class="col">
+                    <div class="display-6">
+                        {% set current_year = now.year if now else 2024 %}
+                        {{ publications|selectattr('year', 'equalto', current_year)|list|length }}
+                    </div>
+                    <small class="text-muted">{{ t.get('publications_this_year', 'This year') }}</small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterPublications(filter) {
+    const cards = document.querySelectorAll('.publication-card');
+    cards.forEach(card => {
+        const year = parseInt(card.dataset.year);
+        let show = true;
+        
+        switch(filter) {
+            case 'all':
+                show = true;
+                break;
+            case 'recent':
+                show = year >= 2023;
+                break;
+            default:
+                show = true;
+        }
+        
+        card.style.display = show ? 'block' : 'none';
+    });
+}
+
+function filterByYear(year) {
+    if (!year) {
+        filterPublications('all');
+        return;
+    }
+    
+    const cards = document.querySelectorAll('.publication-card');
+    cards.forEach(card => {
+        const cardYear = parseInt(card.dataset.year);
+        card.style.display = (cardYear == year) ? 'block' : 'none';
+    });
+}
+
+// Initial filter
+window.onload = () => {
+    filterPublications('all');
+};
+</script>
+
+<style>
+.publication-card {
+    border-left: 4px solid #0d6efd;
+    transition: all 0.3s ease;
+}
+.publication-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}

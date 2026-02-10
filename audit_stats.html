@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiques des audits{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Statistiques des actions admin</h2>
+    <canvas id="auditChart" width="800" height="400"></canvas>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+async function loadAuditStats() {
+    try {
+        const response = await fetch("/admin/audit-stats");
+        if (!response.ok) throw new Error("Erreur lors du chargement des stats");
+        const data = await response.json();
+
+        const labels = data.map(d => d.date);
+        const counts = data.map(d => d.count);
+
+        const ctx = document.getElementById("auditChart").getContext("2d");
+        new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Nombre d'actions par jour",
+                    data: counts,
+                    backgroundColor: "rgba(54, 162, 235, 0.6)",
+                    borderColor: "rgba(54, 162, 235, 1)",
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: true },
+                    tooltip: { enabled: true }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    } catch (err) {
+        console.error(err);
+        showCriticalAlert("Erreur lors du chargement des statistiques ❌");
+    }
+}
+
+// Charger les stats au démarrage
+loadAuditStats();
+</script>
+{% endblock %}

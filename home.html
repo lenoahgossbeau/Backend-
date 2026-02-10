@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get('nav_home', 'Home') }}{% endblock %}
+
+{% block content %}
+    <h1>{{ t.get('home_title', 'Welcome') }}</h1>
+    <p>{{ t.get('home_text', '') }}</p>
+
+    <div style="text-align:center; margin-top:30px;">
+        <p>{{ t.get('home_cta', '') }}</p>
+        <a href="/about" class="btn">{{ t.get('btn_about', 'About') }}</a>
+        <a href="/portfolio" class="btn">{{ t.get('btn_portfolio', 'Portfolio') }}</a>
+        <a href="/contact" class="btn">{{ t.get('btn_contact', 'Contact') }}</a>
+    </div>
+{% endblock %}
