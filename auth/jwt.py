@@ -111,3 +111,14 @@ def decode_access_token(token: str) -> Optional[dict]:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
         return None
+
+# ======================
+# TOKEN D'ACTIVATION (24h)
+# ======================
+def create_activation_token(email: str) -> str:
+    """
+    Génère un token JWT valable 24h pour activer un compte chercheur.
+    """
+    expire = datetime.now(timezone.utc) + timedelta(hours=24)
+    to_encode = {"sub": email, "type": "activation", "exp": expire}
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)

@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
+import resend
+import os
 
 from database import get_db
 from models.user import User
@@ -11,7 +13,7 @@ from models.refresh_token import RefreshToken
 
 from auth.schemas import UserCreate, UserLogin, Token
 from auth.security import hash_password, verify_password
-from auth.jwt import create_access_token, create_refresh_token, decode_access_token
+from auth.jwt import create_access_token, create_refresh_token, decode_access_token, create_activation_token
 
 router = APIRouter(
     prefix="/auth",
@@ -32,18 +34,19 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         email=user_data.email,
         password=hash_password(user_data.password),
         role="researcher",
-        status="active"
+        status="inactive",
+        is_active=False
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    # Créer le profil - ✅ CORRIGÉ: ajout de grade
+    # Créer le profil
     profile = Profile(
         user_id=user.id,
         first_name=user_data.first_name,
         last_name=user_data.last_name,
-        grade="Non spécifié"  # Valeur par défaut pour éviter NOT NULL
+        grade="Non spécifié"
     )
     db.add(profile)
     db.commit()
@@ -57,7 +60,32 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
     db.add(audit_log)
     db.commit()
 
-    # Créer les tokens
+    # Générer le token JWT d'activation
+    activation_token = create_activation_token(user.email)
+    activation_link = f"http://localhost:8000/auth/activate?token={activation_token}"
+    print(f"\n🔗 LIEN D'ACTIVATION JWT : {activation_link}\n")
+
+    # Envoi de l'email d'activation via Resend
+    resend.api_key = os.getenv("RESEND_API_KEY")
+    try:
+        resend.Emails.send(
+            {
+                "from": "Activation <onboarding@resend.dev>",
+                "to": [user.email],
+                "subject": "Active ton compte chercheur",
+                "html": f"""
+                <h2>Bienvenue sur InchTechs</h2>
+                <p>Clique sur le lien ci-dessous pour activer ton compte :</p>
+                <a href="{activation_link}">{activation_link}</a>
+                <p>Ce lien expire dans 24h.</p>
+                """
+            }
+        )
+        print(f"✅ Email d'activation envoyé à {user.email}")
+    except Exception as e:
+        print(f"❌ Erreur envoi email : {e}")
+
+    # Créer les tokens de session
     access_token = create_access_token(
         user_id=user.id,
         role=user.role,
@@ -101,6 +129,9 @@ def login(user_data: UserLogin, request: Request, db: Session = Depends(get_db))
 
     if user.status != "active":
         raise HTTPException(status_code=403, detail="Compte désactivé")
+
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Compte non activé. Vérifiez vos emails.")
 
     # Créer les tokens
     access_token = create_access_token(
@@ -188,7 +219,7 @@ def refresh_token(request: Request, db: Session = Depends(get_db)):
 
 
 # ======================
-# LOGOUT - ✅ CORRIGÉ
+# LOGOUT
 # ======================
 @router.post("/logout")
 def logout(request: Request, db: Session = Depends(get_db)):
@@ -206,7 +237,6 @@ def logout(request: Request, db: Session = Depends(get_db)):
             db_token.revoked = True
             db.commit()
 
-    # ✅ NE CRÉER L'AUDIT QUE SI ON A UN USER_ID VALIDE
     if user_id is not None:
         audit_log = Audit(
             user_id=user_id,

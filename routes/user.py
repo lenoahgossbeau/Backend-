@@ -15,20 +15,19 @@ router = APIRouter(
 # ================== INSCRIPTION ==================
 @router.post("/register", response_model=UserOut)
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(
-        (User.email == user.email) 
-    ).first()
+    existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
-        raise HTTPException(status_code=400, detail="Email ou username déjà utilisé ❌")
+        raise HTTPException(status_code=400, detail="Email déjà utilisé ❌")
 
     hashed_pw = bcrypt.hashpw(user.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
+    # ✅ Correction : uniquement les champs qui existent dans la table User
     new_user = User(
         email=user.email,
-        username=user.username,
-        hashed_password=hashed_pw,
-        role=user.role or "user",
-        status=user.status or "active"
+        password=hashed_pw,
+        role=user.role or "researcher",
+        status=user.status or "pending"
+        # is_active sera False par défaut
     )
     db.add(new_user)
     db.commit()
@@ -37,7 +36,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     audit_log = Audit(
         user_id=new_user.id,
         user_role=new_user.role,
-        action_description=f"Nouvel utilisateur créé: {new_user.username}"
+        action_description=f"Nouvel utilisateur créé: {new_user.email}"
     )
     db.add(audit_log)
     db.commit()

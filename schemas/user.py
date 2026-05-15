@@ -2,19 +2,22 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 
-# 🔹 Schéma de base (champs communs)
-class UserBase(BaseModel):
+# 🔹 Schéma pour la création (requête POST) - SANS username
+class UserCreate(BaseModel):
     email: EmailStr
-    username: Optional[str] = None  # ✅ Rendre optionnel
-    role: Optional[str] = "user"
-    status: Optional[str] = "active"
-
-# 🔹 Schéma pour la création (requête POST)
-class UserCreate(UserBase):
     password: str
+    first_name: Optional[str] = ""
+    last_name: Optional[str] = ""
+    role: Optional[str] = "researcher"
+    status: Optional[str] = "pending"
 
 # 🔹 Schéma pour la sortie (réponse API)
-class UserOut(UserBase):
+class UserOut(BaseModel):
     id: int
+    email: EmailStr
+    first_name: Optional[str] = ""
+    last_name: Optional[str] = ""
+    role: str
+    status: str
     
     model_config = ConfigDict(from_attributes=True)

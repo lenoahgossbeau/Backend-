@@ -49,7 +49,6 @@ try:
     import models.distinction
     import models.cours
     import models.subscription
-    
 
     from models.user import User
     from models.profile import Profile
@@ -69,6 +68,7 @@ try:
     from routes.user import router as user_router
     from routes.profile import router as profile_router
     from routes.publication import router as publication_router
+    from routes.contact import router as contact_router
     from auth.router import router as auth_router
     from routes.admin import admin_router
     from routes.admin_users import admin_users_router
@@ -78,6 +78,12 @@ try:
     from routes.project import router as project_router
     from routes.admin_subscriptions import router as admin_subscriptions_router
     from routes.cv import router as cv_router
+    from routes.activation import router as activation_router
+    from routes.admin_activation import router as admin_activation_router
+    from routes.researcher_messages import router as researcher_messages_router
+    from routes.researcher_public import router as researcher_public_router
+    from routes.payment import router as payment_router
+    from routes.admin_audit import router as admin_audit_router
 
     # ===================== AUTH =====================
     from auth.jwt import (
@@ -116,16 +122,23 @@ try:
 
     app.openapi = custom_openapi
 
-      # ===================== CORS =====================
+    # ===================== CORS =====================
     from fastapi.middleware.cors import CORSMiddleware
-    # Configuration CORS pour permettre au frontend d'appeler l'API
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003", "http://127.0.0.1:3000","https://portfolio-frontend-jlq1.onrender.com",],
+        allow_origins=[
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:3002",
+            "http://localhost:3003",
+            "http://127.0.0.1:3000",
+            "http://jean-dupont.localhost:3000",  # 👈 AJOUT ICI
+            "https://portfolio-frontend-jlq1.onrender.com",
+        ],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "Accept"],
-    )    
+    )
 
     # ===================== INIT DB =====================
     try:
@@ -178,7 +191,6 @@ try:
     WINDOW = 60
     requests_counter = defaultdict(list)
 
-    # ✅ Route de réinitialisation pour les tests
     @app.get("/test/reset-rate-limiter")
     def reset_rate_limiter():
         """Réinitialise le rate limiter pour les tests"""
@@ -187,31 +199,25 @@ try:
 
     @app.middleware("http")
     async def rate_limiter(request: Request, call_next):
-        # ✅ Pages publiques JAMAIS limitées (même en mode test)
         public_paths = [
             "/", "/about", "/contact", "/legal", "/privacy",
             "/portfolio", "/publications", "/distinctions",
             "/academic-career", "/cours", "/media",
-            "/health", "/docs", "/redoc", "/openapi.json", 
+            "/health", "/docs", "/redoc", "/openapi.json",
             "/sitemap.xml", "/favicon.ico", "/api/info",
-            "/test/reset-rate-limiter"  # La route de test n'est pas limitée
+            "/test/reset-rate-limiter"
         ]
-        
-        # Vérifier si c'est une page publique
+
         if request.url.path in public_paths:
             return await call_next(request)
 
-        # Rate limiter pour toutes les autres routes
         ip = request.headers.get("X-Forwarded-For", request.client.host)
         now = time.time()
 
-        # Nettoyer les anciennes entrées
         if ip in requests_counter:
             requests_counter[ip] = [t for t in requests_counter[ip] if now - t < WINDOW]
 
-        # Vérifier si la limite est atteinte
         if ip in requests_counter and len(requests_counter[ip]) >= RATE_LIMIT:
-            # ✅ CORRECTION: Ajout des headers X-RateLimit dans la réponse 429
             return JSONResponse(
                 status_code=429,
                 content={
@@ -227,15 +233,12 @@ try:
                 }
             )
 
-        # Ajouter la requête courante
         if ip not in requests_counter:
             requests_counter[ip] = []
         requests_counter[ip].append(now)
 
-        # Exécuter la requête
         response = await call_next(request)
-        
-        # Ajouter les headers de rate limiting
+
         remaining = RATE_LIMIT - len(requests_counter[ip])
         response.headers["X-RateLimit-Limit"] = str(RATE_LIMIT)
         response.headers["X-RateLimit-Remaining"] = str(max(0, remaining))
@@ -256,28 +259,30 @@ try:
     app.include_router(pdf_router)
     app.include_router(public_test_router, prefix="/api/public", tags=["Public Test"])
     app.include_router(admin_subscriptions_router)
+    app.include_router(activation_router)
+    app.include_router(admin_activation_router)
+    app.include_router(researcher_public_router)
+    app.include_router(researcher_messages_router)
+    app.include_router(payment_router)
+    app.include_router(admin_audit_router)
     print("🔧 Chargement du routeur CV...")
     app.include_router(cv_router)
+    app.include_router(contact_router)
     print("✅ Routeur CV chargé")
-
-   
 
     # ===================== ROUTES DE TEST POUR LE RATE LIMITER =====================
     @app.get("/api/test-rate-limiter")
     @app.get("/api/test-rate-limiter-{suffix}")
     async def test_rate_limiter_route():
-        """Route de test pour le rate limiter"""
         return {"message": "Route de test"}
 
     @app.get("/api/test-error-message")
     @app.get("/api/test-error-message-{suffix}")
     async def test_error_message_route():
-        """Route de test pour les messages d'erreur"""
         return {"message": "Route de test"}
 
     @app.get("/api/test-headers")
     async def test_headers_route():
-        """Route de test pour les headers"""
         return {"message": "Route de test"}
 
     @app.get("/api/test1-{suffix}")
@@ -285,23 +290,19 @@ try:
     @app.get("/api/test3-{suffix}")
     @app.get("/api/test4-{suffix}")
     async def test_shared_counter_routes():
-        """Routes de test pour le compteur partagé"""
         return {"message": "Route de test"}
 
     @app.get("/api/extra-{suffix}")
     async def test_extra_route():
-        """Route de test supplémentaire"""
         return {"message": "Route de test"}
 
     @app.get("/api/final-test")
     async def test_final_route():
-        """Route de test finale"""
         return {"message": "Route de test"}
 
     @app.get("/api/test-reset")
     @app.get("/api/test-reset-{suffix}")
     async def test_reset_route():
-        """Route de test pour la réinitialisation"""
         return {"message": "Route de test"}
 
     @app.get("/api/test-ip")
@@ -311,12 +312,10 @@ try:
     @app.get("/api/test-ip-ip1-final")
     @app.get("/api/test-ip-ip2-extra-{suffix}")
     async def test_ip_route():
-        """Routes de test pour les différentes IPs"""
         return {"message": "Route de test"}
 
     @app.get("/admin/final-test")
     async def test_admin_final_route():
-        """Route de test admin finale"""
         return {"message": "Route de test admin"}
 
     # ===================== TRANSLATIONS =====================
@@ -385,6 +384,86 @@ try:
             ctx["is_admin"] = current_user.role in ["admin", "super_admin"]
         return ctx
 
+    # ===================== PING =====================
+    @app.get("/ping")
+    def ping():
+        return {"message": "pong"}
+
+    # ===================== RESEARCHER PUBLIC PROFILE =====================
+    @app.get("/researcher/public/{user_id}")
+    def get_public_researcher_profile(user_id: int, db: Session = Depends(get_db)):
+        user = db.query(User).filter(
+            User.id == user_id,
+            User.role == "researcher"
+        ).first()
+
+        if not user:
+            return {"error": "Chercheur non trouvé"}
+
+        profile = db.query(Profile).filter(
+            Profile.user_id == user.id
+        ).first()
+
+        publications = []
+        projects = []
+
+        if profile:
+            publications = db.query(Publication).filter(
+                Publication.profile_id == profile.id
+            ).all()
+
+            projects = db.query(Project).filter(
+                Project.profile_id == profile.id
+            ).all()
+
+        return {
+            "id": user.id,
+            "email": user.email,
+            "firstName": profile.first_name if profile else "",
+            "lastName": profile.last_name if profile else "",
+            "profession": profile.grade if profile else "",
+            "bio": profile.bio if profile else "",
+            "publications": [
+                {
+                    "id": p.id,
+                    "title": p.title,
+                    "year": p.year,
+                    "coauthor": p.coauthor
+                }
+                for p in publications
+            ],
+            "projects": [
+                {
+                    "id": p.id,
+                    "title": p.title,
+                    "year": p.year,
+                    "description": p.description
+                }
+                for p in projects
+            ]
+        }
+
+    # ===================== RESEARCHERS LIST =====================
+    @app.get("/researchers")
+    def list_researchers(db: Session = Depends(get_db)):
+        # ✅ CORRECTION: status == "active" au lieu de is_active == True
+        researchers = db.query(User).filter(
+            User.role == "researcher",
+            User.status == "active"
+        ).all()
+
+        result = []
+        for r in researchers:
+            profile = db.query(Profile).filter(Profile.user_id == r.id).first()
+            result.append({
+                "id": r.id,
+                "email": r.email,
+                "firstName": profile.first_name if profile and profile.first_name else "",
+                "lastName": profile.last_name if profile and profile.last_name else "",
+            })
+        # ✅ CORRECTION: return en dehors de la boucle for
+        return result
+
     # ===================== PAGES PUBLIQUES =====================
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request, current_user=Depends(get_current_user_optional)):
@@ -415,7 +494,6 @@ try:
         ctx = base_context(request, current_user)
         ctx["page_title"] = ctx["t"]["nav_privacy"]
         return templates.TemplateResponse("privacy.html", ctx)
-    
 
     # ===================== CONTACT =====================
     @app.post("/contact")
@@ -459,7 +537,6 @@ try:
         request: Request,
         db: Session = Depends(get_db)
     ):
-        """Endpoint public pour envoyer un message de contact"""
         try:
             data = await request.json()
             name = data.get("name")
@@ -473,7 +550,7 @@ try:
                 )
 
             new_message = MessageContact(
-                profile_id=None,  # ← Ajout de profile_id=None
+                profile_id=None,
                 sender_name=name,
                 sender_email=email,
                 message=message,
@@ -486,7 +563,6 @@ try:
 
         except Exception as e:
             print(f"Erreur détaillée: {e}")
-            import traceback
             traceback.print_exc()
             return JSONResponse(
                 status_code=500,
@@ -837,17 +913,17 @@ try:
             pass
 
         return {"query": q, "count": len(results), "results": results}
-    
-        # ===================== INIT DB (for Render) =====================
+
+    # ===================== INIT DB (for Render) =====================
     @app.post("/admin/init-db")
     def init_database(db: Session = Depends(get_db)):
         try:
             from auth.security import hash_password
             from models.user import User
             from database import Base, engine
-            
+
             Base.metadata.create_all(bind=engine)
-            
+
             admin = db.query(User).filter(User.email == 'admin@test.com').first()
             if not admin:
                 admin = User(
@@ -863,8 +939,8 @@ try:
                 return {"message": "Base déjà initialisée", "admin_exists": True}
         except Exception as e:
             return JSONResponse(status_code=500, content={"error": str(e)})
-        
-        # ===================== INIT CV TABLES (for Render) =====================
+
+    # ===================== INIT CV TABLES (for Render) =====================
     @app.post("/admin/init-cv-tables")
     def create_cv_tables():
         try:
@@ -873,7 +949,7 @@ try:
             Base.metadata.create_all(bind=engine)
             return {"message": "Tables CV créées avec succès"}
         except Exception as e:
-            return JSONResponse(status_code=500, content={"error": str(e)})    
+            return JSONResponse(status_code=500, content={"error": str(e)})
 
     print("✅ Application FastAPI configurée avec succès!")
 
@@ -884,12 +960,12 @@ except Exception as e:
     from fastapi import FastAPI
     app = FastAPI()
 
-    @app.get("/")
-    def root():
-        return {"error": "Application en mode secours", "message": str(e)}
+    @app.get("/ping")
+    def ping_fallback():
+        return {"message": "pong", "mode": "secours", "error": str(e)}
 
     @app.get("/health")
-    def health():
+    def health_fallback():
         return {"status": "degraded", "error": str(e)}
 
 if __name__ == "__main__":

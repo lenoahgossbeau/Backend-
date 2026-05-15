@@ -21,6 +21,8 @@ class Profile(Base):
     # Optionnels
     diplome = Column(String(100))
     description = Column(Text)
+    bio = Column(Text, nullable=True)
+    cv_url = Column(String(500), nullable=True)  # 👈 AJOUT POUR LE CV
     profile_picture = Column(String(500))
     
     # Contacts

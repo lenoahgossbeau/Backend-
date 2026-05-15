@@ -1,5 +1,5 @@
 # models/user.py
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Boolean
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -12,6 +12,10 @@ class User(Base):
 
     role = Column(String(20), default="researcher", nullable=False, index=True)
     status = Column(String(20), default="inactive", nullable=False, index=True)
+    is_active = Column(Boolean, default=False, nullable=False)
+
+    activation_code = Column(String(100), nullable=True)
+    slug = Column(String(100), unique=True, nullable=True)  # 👈 AJOUT POUR SOUS-DOMAINE
 
     # ======================
     # RELATIONS
@@ -35,7 +39,6 @@ class User(Base):
         cascade="all, delete-orphan"
     )
 
-    # AJOUTEZ CETTE RELATION (correspond à votre modèle RefreshToken)
     refresh_tokens = relationship(
         "RefreshToken",
         back_populates="user",
