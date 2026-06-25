@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get('nav_contact', 'Contact') }}{% endblock %}
+
+{% block content %}
+<h1>{{ t.get('contact_title', 'Contact') }}</h1>
+
+<div class="form-card">
+    {% if confirmation %}
+        <div class="confirmation" id="confirmation">
+            ✅ {{ t.get('contact_confirmation', 'Message sent successfully') }}
+        </div>
+    {% endif %}
+
+    {% if error %}
+        <div class="error" style="color:red;">
+            ❌ {{ error }}
+        </div>
+    {% endif %}
+
+    <form method="POST">
+        <label for="name">{{ t.get('contact_label_name', 'Name') }}</label>
+        <input type="text" name="name" id="name" placeholder="{{ t.get('contact_placeholder_name', '') }}" required>
+
+        <label for="email">{{ t.get('contact_label_email', 'Email') }}</label>
+        <input type="email" name="email" id="email" placeholder="{{ t.get('contact_placeholder_email', '') }}" required>
+
+        <label for="message">{{ t.get('contact_label_message', 'Message') }}</label>
+        <textarea name="message" id="message" placeholder="{{ t.get('contact_placeholder_message', '') }}" required></textarea>
+
+        <button type="submit">{{ t.get('contact_btn_send', 'Send') }}</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    setTimeout(function() {
+        const conf = document.getElementById("confirmation");
+        if (conf) {
+            conf.style.transition = "opacity 1s ease";
+            conf.style.opacity = "0";
+            setTimeout(() => conf.remove(), 1000);
+        }
+    }, 5000);
+</script>
+{% endblock %}

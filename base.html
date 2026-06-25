@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Portfolio{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* ✅ Style personnalisé pour le menu Admin */
+        #adminDropdown::before {
+            content: "⚙️ ";
+            margin-right: 4px;
+        }
+        .dropdown-menu-dark .dropdown-item:hover {
+            background-color: #343a40;
+            color: #ffc107; /* jaune doré pour mettre en valeur */
+        }
+    </style>
+</head>
+<body>
+    <!-- Bandeau fixe pour alertes critiques -->
+    <div id="criticalAlert" class="alert alert-danger text-center mb-0" 
+         style="display:none; position:fixed; top:0; left:0; width:100%; z-index:1050;">
+        ⚠️ Accès interdit ou session expirée
+    </div>
+
+    <!-- Barre de navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mt-5">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Portfolio</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
+                    data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" 
+                    aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">{{ t.get('nav_home', 'Home') }}</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/portfolio">{{ t.get('nav_portfolio', 'Portfolio') }}</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/contact">{{ t.get('nav_contact', 'Contact') }}</a></li>
+                    
+                    <!-- Menu Admin (visible si admin) -->
+                    <li class="nav-item dropdown" id="adminNav" style="display:none;">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" 
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            Admin
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="adminDropdown">
+                            <li><a class="dropdown-item" href="/audits">Audits</a></li>
+                            <li><a class="dropdown-item" href="/admin/sessions/page">Sessions</a></li>
+                            <li><a class="dropdown-item" href="/admin/audit-stats/page">Statistiques</a></li>
+                            <li><a class="dropdown-item" href="/admin/dashboard">Dashboard</a></li> <!-- ✅ ajout -->
+                        </ul>
+                    </li>
+
+                    <!-- Login (visible si déconnecté) -->
+                    <li class="nav-item" id="loginNav">
+                        <a class="nav-link" href="/auth/login">{{ t.get('nav_login', 'Login') }}</a>
+                    </li>
+
+                    <!-- Info utilisateur -->
+                    <li class="nav-item">
+                        <span id="userInfo" class="navbar-text text-light me-3"></span>
+                    </li>
+
+                    <!-- Logout (visible si connecté) -->
+                    <li class="nav-item" id="logoutNav" style="display:none;">
+                        <button id="logoutBtn" class="btn btn-outline-light ms-3">Déconnexion</button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Zone d'alerte classique -->
+    <div id="alertBox" class="container mt-3"></div>
+
+    <!-- Contenu principal -->
+    <main class="container mt-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Scripts globaux -->
+    <script src="https://cdn.jsdelivr.net/npm/js-base64@3.7.5/base64.min.js"></script>
+    <script>
+    function showAlert(message, type="success") {
+        const alertBox = document.getElementById("alertBox");
+        alertBox.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>`;
+    }
+
+    function showCriticalAlert(message) {
+        const critical = document.getElementById("criticalAlert");
+        critical.textContent = message;
+        critical.style.display = "block";
+    }
+
+    // ✅ Bouton Logout
+    document.getElementById("logoutBtn")?.addEventListener("click", async () => {
+        localStorage.removeItem("access_token"); 
+        try {
+            await fetch("/auth/logout", { method: "POST" });
+        } catch (e) {
+            console.warn("Erreur logout côté serveur", e);
+        }
+        showAlert("Vous êtes déconnecté ✅", "success");
+        setTimeout(() => window.location.href = "/auth/login", 1500);
+    });
+
+    // ✅ Vérification du token JWT + Refresh automatique
+    async function checkToken() {
+        const token = localStorage.getItem("access_token");
+        if (token) {
+            try {
+                const payload = JSON.parse(Base64.decode(token.split(".")[1])); 
+                const username = payload.username || "Utilisateur";
+                const role = payload.role || "N/A";
+                const exp = payload.exp * 1000; // exp en ms
+
+                // Vérifier expiration
+                if (Date.now() > exp) {
+                    console.warn("Token expiré, tentative de refresh...");
+                    const refreshed = await fetch("/auth/refresh", { method: "POST" });
+                    if (refreshed.ok) {
+                        const data = await refreshed.json();
+                        localStorage.setItem("access_token", data.access_token);
+                        showAlert("Session renouvelée ✅", "success");
+                        return checkToken(); // relancer avec nouveau token
+                    } else {
+                        showCriticalAlert("Session expirée ❌ Veuillez vous reconnecter.");
+                        setTimeout(() => window.location.href = "/auth/login", 2000);
+                        return;
+                    }
+                }
+
+                document.getElementById("userInfo").textContent = `👤 ${username} (${role})`;
+
+                // Cacher Login, afficher Logout
+                document.getElementById("loginNav").style.display = "none";
+                document.getElementById("logoutNav").style.display = "block";
+
+                // ✅ Afficher menu Admin seulement si admin
+                if (role === "admin") {
+                    document.getElementById("adminNav").style.display = "block";
+                }
+
+                showAlert(`Bienvenue ${username} 👋`, "success");
+
+            } catch (e) {
+                console.error("Erreur de décodage du token JWT", e);
+                showCriticalAlert("Erreur de connexion ❌");
+            }
+        } else {
+            // Pas de token → cacher Logout et Admin
+            document.getElementById("logoutNav").style.display = "none";
+            document.getElementById("adminNav").style.display = "none";
+            document.getElementById("loginNav").style.display = "block";
+
+            if (window.location.pathname.startsWith("/audits") || 
+                window.location.pathname.startsWith("/admin/sessions") || 
+                window.location.pathname.startsWith("/admin/audit-stats") || 
+                window.location.pathname.startsWith("/admin/dashboard")) {
+                showCriticalAlert("Session expirée ❌ Veuillez vous reconnecter.");
+                setTimeout(() => window.location.href = "/auth/login", 2000);
+            }
+        }
+    }
+
+    // ✅ Lancer la vérification au chargement
+    checkToken();
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

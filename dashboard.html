@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Tableau de bord Admin</h2>
+
+    <!-- Statistiques principales -->
+    <div class="row text-center mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5>Utilisateurs actifs</h5>
+                    <h3>{{ active_users }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h5>Utilisateurs inactifs</h5>
+                    <h3>{{ inactive_users }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5>Sessions actives</h5>
+                    <h3>{{ active_sessions }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <h5>Total audits</h5>
+                    <h3>{{ total_audits }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Boutons d'export -->
+    <div class="mt-3 text-end">
+        {% if current_user.role in ["admin", "super_admin"] %}
+            <a href="/admin/dashboard/export/csv" class="btn btn-success">Exporter CSV</a>
+        {% endif %}
+
+        {% if current_user.role == "super_admin" %}
+            <a href="/admin/dashboard/export/pdf" class="btn btn-danger">Exporter PDF (stats seules)</a>
+            <button id="exportPdfWithChart" class="btn btn-primary">Exporter PDF avec graphique</button>
+        {% endif %}
+    </div>
+
+    <!-- Graphique des actions -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Actions admin par jour</h5>
+            <canvas id="auditChart" width="800" height="400"></canvas>
+        </div>
+    </div>
+
+    <!-- Table des audits avec filtres et pagination -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Dernières actions admin</h5>
+
+            <!-- Formulaire de filtres -->
+            <form id="auditFilterForm" class="row mb-3">
+                <div class="col-md-3">
+                    <input type="text" id="filterUserId" class="form-control" placeholder="User ID">
+                </div>
+                <div class="col-md-3">
+                    <select id="filterRole" class="form-select">
+                        <option value="">-- Rôle --</option>
+                        <option value="admin">Admin</option>
+                        <option value="super_admin">Super Admin</option>
+                        <option value="moderator">Moderator</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <input type="text" id="filterAction" class="form-control" placeholder="Action">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Filtrer</button>
+                </div>
+            </form>
+
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Utilisateur</th>
+                        <th>Rôle</th>
+                        <th>Action</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody id="auditTableBody">
+                    <!-- Rempli dynamiquement -->
+                </tbody>
+            </table>
+            <div class="text-center">
+                <button id="loadMoreBtn" class="btn btn-outline-primary">Voir plus</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+async function loadAuditStats() {
+    try {
+        const response = await fetch("/admin/audit-stats");
+        if (!response.ok) throw new Error("Erreur lors du chargement des stats");
+        const data = await response.json();
+
+        const labels = data.map(d => d.date);
+        const counts = data.map(d => d.count);
+
+        const ctx = document.getElementById("auditChart").getContext("2d");
+        new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Nombre d'actions par jour",
+                    data: counts,
+                    backgroundColor: "rgba(54, 162, 235, 0.4)",
+                    borderColor: "rgba(54, 162, 235, 1)",
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    } catch (err) {
+        console.error(err);
+        alert("Erreur lors du chargement des statistiques ❌");
+    }
+}
+
+let currentPage = 1;
+const limit = 10;
+let currentFilters = {};
+
+async function loadLatestAudits(page = 1, filters = {}) {
+    try {
+        const params = new URLSearchParams({ page, limit, ...filters });
+        const response = await fetch(`/admin/dashboard/audits?${params.toString()}`);
+        if (!response.ok) throw new Error("Erreur lors du chargement des audits");
+        const result = await response.json();
+
+        const tbody = document.getElementById("auditTableBody");
+        if (page === 1) tbody.innerHTML = ""; // reset si nouvelle recherche
+
+        result.audits.forEach(a => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${a.date}</td>
+                    <td>${a.user_id}</td>
+                    <td>${a.user_role}</td>
+                    <td>${a.action}</td>
+                    <td>${a.ip}</td>
+                </tr>`;
+        });
+
+        if ((page * limit) >= result.total) {
+            document.getElementById("loadMoreBtn").style.display = "none";
+        } else {
+            document.getElementById("loadMoreBtn").style.display = "block";
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Erreur lors du chargement des audits ❌");
+    }
+}
+
+document.getElementById("loadMoreBtn").addEventListener("click", () => {
+    currentPage++;
+    loadLatestAudits(currentPage, currentFilters);
+});
+
+document.getElementById("auditFilterForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    currentPage = 1;
+    currentFilters = {
+        user_id: document.getElementById("filterUserId").value,
+        role: document.getElementById("filterRole").value,
+        action: document.getElementById("filterAction").value
+    };
+    loadLatestAudits(currentPage, currentFilters);
+});
+
+// Export PDF avec graphique
+document.getElementById("exportPdfWithChart")?.addEventListener("click", async () => {
+    const chartCanvas = document.getElementById("auditChart");
+    const chartImage = chartCanvas.toDataURL("image/png");
+
+    const response = await fetch("/admin/dashboard/export/pdf-with-chart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chart: chartImage })
+    });
+
+    if (!response.ok) {
+        alert("Erreur lors de l'export PDF ❌");
+        return;
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "dashboard_report_with_chart.pdf";
+    a.click();
+    window.URL.revokeObjectURL(url);
+});
+
+// Charger la première page au démarrage
+loadAuditStats();
+loadLatestAudits();
+</script>
+{% endblock %}

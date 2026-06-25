@@ -40,7 +40,7 @@ def send_activation_email_brevo(to_email: str, activation_link: str, first_name:
     """
 
     payload = {
-        "sender": {"name": "InchTechs", "email": "noreply@inchtechs.com"},
+        "sender": {"name": "InchTechs", "email": "noreply@inchtechs.xyz"},  # ✅ Changé de .com à .xyz
         "to": [{"email": to_email, "name": first_name if first_name else to_email}],
         "subject": "Activez votre compte chercheur InchTechs",
         "htmlContent": html_content

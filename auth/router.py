@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 import resend
 import os
+import bcrypt
+from pydantic import BaseModel  # ✅ AJOUTÉ
 
 from database import get_db
 from models.user import User
@@ -13,7 +15,7 @@ from models.refresh_token import RefreshToken
 
 from auth.schemas import UserCreate, UserLogin, Token
 from auth.security import hash_password, verify_password
-from auth.jwt import create_access_token, create_refresh_token, decode_access_token, create_activation_token
+from auth.jwt import create_access_token, create_refresh_token, decode_access_token, create_activation_token, get_current_user
 
 router = APIRouter(
     prefix="/auth",
@@ -62,7 +64,7 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
 
     # Générer le token JWT d'activation
     activation_token = create_activation_token(user.email)
-    activation_link = f"http://localhost:8000/auth/activate?token={activation_token}"
+    activation_link = f"http://localhost:3000/auth/activate?token={activation_token}"
     print(f"\n🔗 LIEN D'ACTIVATION JWT : {activation_link}\n")
 
     # Envoi de l'email d'activation via Resend
@@ -250,3 +252,28 @@ def logout(request: Request, db: Session = Depends(get_db)):
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
     return response
+
+
+# ======================
+# CHANGE PASSWORD
+# ======================
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+@router.put("/change-password")
+def change_password(
+    request: PasswordChangeRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Vérifier l'ancien mot de passe
+    if not verify_password(request.current_password, current_user.password):
+        raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
+    
+    # Hacher le nouveau mot de passe
+    new_hashed = bcrypt.hashpw(request.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    current_user.password = new_hashed
+    db.commit()
+    
+    return {"message": "Mot de passe mis à jour avec succès"}

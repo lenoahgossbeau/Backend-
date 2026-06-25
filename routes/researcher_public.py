@@ -5,6 +5,7 @@ from models.user import User
 from models.profile import Profile
 from models.publication import Publication
 from models.project import Project
+from models.cv import TechnicalSkill, SoftSkill, Language, Degree, Experience
 
 router = APIRouter(prefix="/researcher/public", tags=["Public Researcher"])
 
@@ -15,15 +16,13 @@ def get_all_public_researchers(db: Session = Depends(get_db)):
     researchers = db.query(User).filter(
         User.role == "researcher",
         User.status == "active"
-    ).all()  # ✅ Plus de limite, tous les chercheurs actifs sont affichés
+    ).all()
     
     result = []
     for r in researchers:
-        # Récupère le profil associé
         profile = db.query(Profile).filter(Profile.user_id == r.id).first()
         
-        # Construit le nom à partir du profil ou de l'email
-        name = r.email.split('@')[0]  # nom par défaut
+        name = r.email.split('@')[0]
         if profile:
             if profile.first_name or profile.last_name:
                 name = f"{profile.first_name or ''} {profile.last_name or ''}".strip()
@@ -55,7 +54,13 @@ def get_public_researcher_by_slug(slug: str, db: Session = Depends(get_db)):
     publications = db.query(Publication).filter(Publication.profile_id == profile.id).all() if profile else []
     projects = db.query(Project).filter(Project.profile_id == profile.id).all() if profile else []
 
-    # Construction du nom
+    # ✅ Récupération des données du CV avec les bonnes classes
+    skills_tech = db.query(TechnicalSkill).filter(TechnicalSkill.profile_id == profile.id).all() if profile else []
+    skills_soft = db.query(SoftSkill).filter(SoftSkill.profile_id == profile.id).all() if profile else []
+    languages = db.query(Language).filter(Language.profile_id == profile.id).all() if profile else []
+    degrees = db.query(Degree).filter(Degree.profile_id == profile.id).all() if profile else []
+    experiences = db.query(Experience).filter(Experience.profile_id == profile.id).all() if profile else []
+
     name = user.email.split('@')[0]
     if profile:
         if profile.first_name or profile.last_name:
@@ -91,7 +96,32 @@ def get_public_researcher_by_slug(slug: str, db: Session = Depends(get_db)):
                 "link": getattr(proj, "link", "")
             }
             for proj in projects
-        ]
+        ],
+        # ✅ AJOUT : Données du CV avec les bonnes classes
+        "cv": {
+            "skills_tech": [{"name": s.skill_name, "level": s.level} for s in skills_tech],
+            "skills_soft": [{"name": s.skill_name} for s in skills_soft],
+            "languages": [{"name": l.language, "level": l.level} for l in languages],
+            "degrees": [
+                {
+                    "title": d.title,
+                    "institution": d.institution,
+                    "year": d.year,
+                    "description": d.description
+                }
+                for d in degrees
+            ],
+            "experiences": [
+                {
+                    "title": e.title,
+                    "company": e.company,
+                    "start_date": e.start_date.isoformat() if e.start_date else None,
+                    "end_date": e.end_date.isoformat() if e.end_date else None,
+                    "description": e.description
+                }
+                for e in experiences
+            ]
+        }
     }
 
 # ====================== ROUTE PAR ID ======================
@@ -110,7 +140,13 @@ def get_public_researcher_by_id(user_id: int, db: Session = Depends(get_db)):
     publications = db.query(Publication).filter(Publication.profile_id == profile.id).all() if profile else []
     projects = db.query(Project).filter(Project.profile_id == profile.id).all() if profile else []
 
-    # Construction du nom
+    # ✅ Récupération des données du CV avec les bonnes classes
+    skills_tech = db.query(TechnicalSkill).filter(TechnicalSkill.profile_id == profile.id).all() if profile else []
+    skills_soft = db.query(SoftSkill).filter(SoftSkill.profile_id == profile.id).all() if profile else []
+    languages = db.query(Language).filter(Language.profile_id == profile.id).all() if profile else []
+    degrees = db.query(Degree).filter(Degree.profile_id == profile.id).all() if profile else []
+    experiences = db.query(Experience).filter(Experience.profile_id == profile.id).all() if profile else []
+
     name = user.email.split('@')[0]
     if profile:
         if profile.first_name or profile.last_name:
@@ -146,5 +182,30 @@ def get_public_researcher_by_id(user_id: int, db: Session = Depends(get_db)):
                 "link": getattr(proj, "link", "")
             }
             for proj in projects
-        ]
+        ],
+        # ✅ AJOUT : Données du CV avec les bonnes classes
+        "cv": {
+            "skills_tech": [{"name": s.skill_name, "level": s.level} for s in skills_tech],
+            "skills_soft": [{"name": s.skill_name} for s in skills_soft],
+            "languages": [{"name": l.language, "level": l.level} for l in languages],
+            "degrees": [
+                {
+                    "title": d.title,
+                    "institution": d.institution,
+                    "year": d.year,
+                    "description": d.description
+                }
+                for d in degrees
+            ],
+            "experiences": [
+                {
+                    "title": e.title,
+                    "company": e.company,
+                    "start_date": e.start_date.isoformat() if e.start_date else None,
+                    "end_date": e.end_date.isoformat() if e.end_date else None,
+                    "description": e.description
+                }
+                for e in experiences
+            ]
+        }
     }

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
@@ -7,11 +7,18 @@ from models.audit import Audit
 from database import get_db
 from auth.dependencies import get_current_user
 from models.user import User
+import os
+import shutil
+from datetime import datetime
 
 router = APIRouter(
     prefix="/profiles",
     tags=["Profiles"]
 )
+
+# ===================== DOSSIER D'UPLOAD PHOTO =====================
+PHOTO_UPLOAD_DIR = "uploads/photos"
+os.makedirs(PHOTO_UPLOAD_DIR, exist_ok=True)
 
 # Schémas locaux (pour éviter les erreurs d'import)
 class ProfileOut(BaseModel):
@@ -51,6 +58,52 @@ class ProfileCreate(BaseModel):
     whatsapp: Optional[str] = None
     twitter: Optional[str] = None
     github: Optional[str] = None
+
+# ================== UPLOAD PHOTO ==================
+@router.post("/upload-photo")
+def upload_photo(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Télécharge une photo pour le chercheur connecté"""
+    # Vérifier que c'est une image
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="Seuls les fichiers image sont acceptés")
+    
+    # Vérifier la taille (max 2MB)
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+    if size > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="L'image ne doit pas dépasser 2MB")
+    
+    # Générer un nom de fichier unique
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    extension = file.filename.split('.')[-1]
+    filename = f"photo_{current_user.id}_{timestamp}.{extension}"
+    filepath = os.path.join(PHOTO_UPLOAD_DIR, filename)
+    
+    # Sauvegarder le fichier
+    try:
+        with open(filepath, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de l'upload: {str(e)}")
+    
+    # Mettre à jour le profil avec le chemin de la photo
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profil non trouvé")
+    
+    profile.profile_picture = f"/uploads/photos/{filename}"
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": "Photo téléchargée avec succès",
+        "photo_url": profile.profile_picture
+    }
 
 # ================== CRÉER MON PROFIL ==================
 @router.post("/", response_model=ProfileOut)
@@ -240,3 +293,4 @@ def delete_my_profile(
     db.commit()
 
     return {"message": "Profil supprimé ✅"}
+

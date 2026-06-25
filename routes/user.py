@@ -2,15 +2,25 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from schemas.user import UserCreate, UserOut
 from models.user import User
+from models.profile import Profile
 from models.audit import Audit
 from database import get_db
 from auth.dependencies import get_current_admin
 import bcrypt
+import re  # ✅ AJOUTÉ pour générer les slugs
 
 router = APIRouter(
     prefix="/users",
     tags=["Users"]
 )
+
+# ================== FONCTION DE GÉNÉRATION DE SLUG ==================
+def generate_slug(email: str) -> str:
+    """Génère un slug à partir de l'email"""
+    slug = email.split('@')[0].lower()
+    slug = re.sub(r'[^a-z0-9-]', '-', slug)
+    slug = re.sub(r'-+', '-', slug)
+    return slug
 
 # ================== INSCRIPTION ==================
 @router.post("/register", response_model=UserOut)
@@ -21,17 +31,27 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
     hashed_pw = bcrypt.hashpw(user.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
-    # ✅ Correction : uniquement les champs qui existent dans la table User
+    # Création de l'utilisateur avec slug généré automatiquement
     new_user = User(
         email=user.email,
         password=hashed_pw,
         role=user.role or "researcher",
-        status=user.status or "pending"
-        # is_active sera False par défaut
+        status=user.status or "pending",
+        slug=generate_slug(user.email)  # ✅ SLUG GÉNÉRÉ AUTOMATIQUEMENT
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # Création automatique du profil pour ce chercheur
+    new_profile = Profile(
+        user_id=new_user.id,
+        email=user.email,
+        first_name=user.first_name if hasattr(user, 'first_name') else "",
+        last_name=user.last_name if hasattr(user, 'last_name') else ""
+    )
+    db.add(new_profile)
+    db.commit()
 
     audit_log = Audit(
         user_id=new_user.id,

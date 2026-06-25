@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get('nav_portfolio', 'Portfolio') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="form-card">
+        <h1>{{ t.get('portfolio_title', 'My Projects') }}</h1>
+        
+        <!-- Section Publications -->
+        <div class="mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h4">{{ t.get('portfolio_publications', 'Publications') }}</h2>
+                <a href="/publications" class="btn btn-sm btn-outline-primary">
+                    {{ t.get('portfolio_view_all_pubs', 'View all publications') }}
+                </a>
+            </div>
+            
+            {% if publications %}
+            <div class="row">
+                {% for pub in publications[:3] %} <!-- Limite à 3 pour la vue portfolio -->
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <div class="d-flex justify-content-between">
+                                <span class="badge bg-primary">{{ pub.year }}</span>
+                                {% if pub.journal %}
+                                <span class="badge bg-info text-dark">{{ pub.journal }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="card-title">{{ pub.title }}</h6>
+                            
+                            <!-- COAUTEURS CORRIGÉ -->
+                            {% if pub.coauthor and pub.coauthor|length > 0 %}
+                            <p class="card-text small text-muted mb-2">
+                                <strong>{{ t.get('portfolio_authors', 'Authors:') }}</strong>
+                                {{ pub.coauthor|join(', ') }}
+                            </p>
+                            {% endif %}
+                            
+                            <!-- DOI -->
+                            {% if pub.doi %}
+                            <p class="card-text small">
+                                <a href="https://doi.org/{{ pub.doi }}" target="_blank" class="text-decoration-none">
+                                    <i class="bi bi-link-45deg"></i> DOI: {{ pub.doi }}
+                                </a>
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            {% if publications|length > 3 %}
+            <div class="text-center mt-3">
+                <a href="/publications" class="btn btn-outline-primary btn-sm">
+                    {{ t.get('portfolio_see_more_pubs', 'See more publications') }} ({{ publications|length }} total)
+                </a>
+            </div>
+            {% endif %}
+            
+            {% else %}
+            <div class="alert alert-info">
+                {{ t.get('portfolio_no_publications', 'No publications available yet.') }}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Section Projets (ton code original avec corrections mineures) -->
+        <h2 class="h4 mb-3">{{ t.get('portfolio_projects', 'Projects') }}</h2>
+        
+        <!-- Filtres par année -->
+        <div class="filters mb-4">
+            <button onclick="filterProjects('all')" class="btn btn-sm btn-outline-primary">{{ t.get('portfolio_filter_all', 'All') }}</button>
+            <button onclick="filterProjects('current')" class="btn btn-sm btn-outline-primary">{{ t.get('portfolio_filter_current', 'Current') }}</button>
+            <button onclick="filterProjects('completed')" class="btn btn-sm btn-outline-primary">{{ t.get('portfolio_filter_completed', 'Completed') }}</button>
+            <div class="mt-2">
+                <small class="text-muted">{{ t.get('portfolio_filter_by_year', 'Filter by year:') }}</small>
+                <input type="number" id="yearFilter" min="2000" max="2030" placeholder="Year" 
+                       onchange="filterByYear(this.value)" class="form-control form-control-sm d-inline-block w-auto">
+            </div>
+        </div>
+
+        <!-- Grille des projets -->
+        <div id="project-container" class="portfolio-grid">
+            {% for project in projects %}
+            <div class="card mb-3" data-year="{{ project.year }}" data-status="{{ project.status or '' }}" style="display:none;">
+                <!-- En-tête avec année et statut -->
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-primary">{{ t.get('portfolio_year', 'Year') }}: {{ project.year }}</span>
+                        {% if project.status %}
+                        <span class="badge bg-{{ 'success' if project.status == 'Completed' else 'warning' }}">
+                            {{ project.status }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <h5 class="card-title">{{ project.title }}</h5>
+                    
+                    <!-- COAUTEURS CORRIGÉ -->
+                    {% if project.coauthor and project.coauthor|length > 0 %}
+                    <p class="card-text">
+                        <small class="text-muted">
+                            <strong>{{ t.get('portfolio_collaborators', 'Collaborators:') }}</strong> 
+                            {{ project.coauthor|join(', ') }}
+                        </small>
+                    </p>
+                    {% endif %}
+                    
+                    <!-- DESCRIPTION -->
+                    {% if project.description %}
+                    <p class="card-text">{{ project.description }}</p>
+                    {% endif %}
+                    
+                    <!-- BUDGET -->
+                    {% if project.budget %}
+                    <p class="card-text">
+                        <strong>{{ t.get('portfolio_budget', 'Budget:') }}</strong> 
+                        {{ project.budget }} €
+                    </p>
+                    {% endif %}
+                    
+                    <!-- Commentaires -->
+                    {% if project.comments %}
+                    <div class="mt-3">
+                        <h6>{{ t.get('portfolio_comments', 'Comments') }} ({{ project.comments|length }})</h6>
+                        <div class="comments-section" style="max-height: 150px; overflow-y: auto;">
+                            {% for comment in project.comments %}
+                            <div class="border-start border-3 ps-2 mb-2">
+                                <small>
+                                    <strong>{{ comment.user.email if comment.user else 'Anonymous' }}</strong>
+                                    <span class="text-muted"> - {{ comment.created_at.strftime('%d/%m/%Y') if comment.created_at else '' }}</span>
+                                </small>
+                                <p class="mb-1 small">{{ comment.content }}</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Formulaire de commentaire -->
+                    {% if current_user %}
+                    <form method="POST" action="/portfolio/comment" class="comment-form mt-3">
+                        <input type="hidden" name="project_id" value="{{ project.id }}">
+                        <div class="input-group">
+                            <textarea name="comment" class="form-control" 
+                                      placeholder="{{ t.get('portfolio_comment_placeholder', 'Write a comment') }}" 
+                                      rows="2" required></textarea>
+                            <button type="submit" class="btn btn-primary">{{ t.get('portfolio_btn_send', 'Send') }}</button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <p class="text-muted small mt-2">
+                        <a href="/login">{{ t.get('portfolio_login_to_comment', 'Log in to comment') }}</a>
+                    </p>
+                    {% endif %}
+                </div>
+                
+                <div class="card-footer text-muted">
+                    <small>
+                        {% if project.created_at %}
+                        {{ t.get('portfolio_created', 'Created') }}: {{ project.created_at.strftime('%d/%m/%Y') }}
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                {{ t.get('portfolio_no_projects', 'No projects available yet.') }}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        <div class="text-center mt-3">
+            <button id="loadMoreBtn" onclick="loadMore()" class="btn btn-primary">{{ t.get('portfolio_btn_more', 'Load more') }}</button>
+        </div>
+
+        <!-- Statistiques -->
+        <div class="mt-5 p-3 bg-light rounded">
+            <h4>{{ t.get('portfolio_statistics', 'Statistics') }}</h4>
+            <div class="row text-center">
+                <div class="col-md-3 mb-3">
+                    <div class="display-6">{{ projects|length }}</div>
+                    <small class="text-muted">{{ t.get('portfolio_total_projects', 'Total projects') }}</small>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="display-6">
+                        {% set current_year = now.year %}
+                        {{ projects|selectattr('year', 'equalto', current_year)|list|length }}
+                    </div>
+                    <small class="text-muted">{{ t.get('portfolio_projects_this_year', 'Projects this year') }}</small>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="display-6">
+                        {% set unique_collabs = [] %}
+                        {% for project in projects %}
+                            {% if project.coauthor %}
+                                {% for collab in project.coauthor %}
+                                    {% if collab not in unique_collabs %}
+                                        {% set _ = unique_collabs.append(collab) %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        {% endfor %}
+                        {{ unique_collabs|length }}
+                    </div>
+                    <small class="text-muted">{{ t.get('portfolio_unique_collaborators', 'Unique collaborators') }}</small>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="display-6">{{ publications|length }}</div>
+                    <small class="text-muted">{{ t.get('portfolio_total_pubs', 'Total publications') }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let visible = 0;
+const step = 6; // Augmenté pour montrer plus de projets
+
+function filterProjects(filter) {
+    const cards = document.querySelectorAll('#project-container .card');
+    const now = new Date().getFullYear();
+    
+    cards.forEach(card => {
+        let show = false;
+        const status = card.dataset.status.toLowerCase();
+        const year = parseInt(card.dataset.year);
+        
+        switch(filter) {
+            case 'all':
+                show = true;
+                break;
+            case 'current':
+                show = status.includes('current') || status.includes('en cours') || 
+                       status.includes('progress') || year === now;
+                break;
+            case 'completed':
+                show = status.includes('completed') || status.includes('terminé') || 
+                       status.includes('finished') || year < now;
+                break;
+            default:
+                show = true;
+        }
+        
+        card.style.display = show ? 'none' : 'none'; // Cache d'abord
+    });
+    
+    // Reset visible counter
+    visible = 0;
+    loadMore();
+}
+
+function filterByYear(year) {
+    if (!year) {
+        filterProjects('all');
+        return;
+    }
+    
+    const cards = document.querySelectorAll('#project-container .card');
+    cards.forEach(card => {
+        const cardYear = parseInt(card.dataset.year);
+        card.style.display = (cardYear == year) ? 'none' : 'none'; // Cache d'abord
+    });
+    
+    visible = 0;
+    loadMore();
+}
+
+function loadMore() {
+    const cards = document.querySelectorAll('#project-container .card');
+    const nextVisible = Math.min(visible + step, cards.length);
+    
+    // Show up to nextVisible
+    for (let i = 0; i < cards.length; i++) {
+        if (i < nextVisible) {
+            cards[i].style.display = 'block';
+        } else {
+            cards[i].style.display = 'none';
+        }
+    }
+    
+    visible = nextVisible;
+
+    // Hide button if all are shown
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    if (loadMoreBtn) {
+        loadMoreBtn.style.display = (visible >= cards.length) ? 'none' : 'block';
+    }
+}
+
+window.onload = () => {
+    // Affiche les projets au chargement
+    const cards = document.querySelectorAll('#project-container .card');
+    cards.forEach(card => {
+        card.style.display = 'none'; // Cache tous au début
+    });
+    loadMore();
+};
+</script>
+
+<style>
+.portfolio-grid .card {
+    transition: transform 0.2s;
+    margin-bottom: 1rem;
+}
+.portfolio-grid .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.comments-section {
+    font-size: 0.85rem;
+}
+</style>
+{% endblock %}

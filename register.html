@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ t.get('nav_register', 'Register') }}{% endblock %}
+
+{% block content %}
+<h1>{{ t.get('register_title', 'Create an account') }}</h1>
+
+<div class="form-card">
+    {% if error %}
+        <div class="error-message">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST">
+        <!-- Champ utilisateur -->
+        <label for="username">{{ t.get('register_label_username', 'Username') }}</label>
+        <input type="text" name="username" id="username" placeholder="{{ t.get('register_placeholder_username', '') }}" required>
+
+        <!-- Champ mot de passe -->
+        <label for="password">{{ t.get('register_label_password', 'Password') }}</label>
+        <div class="password-wrapper">
+            <input type="password" name="password" id="password" placeholder="{{ t.get('register_placeholder_password', '') }}" required>
+            <span class="toggle-icon" onclick="togglePassword()">👁️</span>
+        </div>
+
+        <!-- Bouton -->
+        <button type="submit">{{ t.get('register_btn_submit', 'Register') }}</button>
+    </form>
+
+    <!-- Lien vers login -->
+    <p style="text-align:center; margin-top:15px;">
+        {{ t.get('register_have_account', 'Already have an account?') }}
+        <a href="/login">{{ t.get('register_login_link', 'Login here') }}</a>
+    </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePassword() {
+    const input = document.getElementById("password");
+    const icon = document.querySelector(".toggle-icon");
+    if (input.type === "password") {
+        input.type = "text";
+        icon.textContent = "🙈";
+    } else {
+        input.type = "password";
+        icon.textContent = "👁️";
+    }
+}
+</script>
+{% endblock %}

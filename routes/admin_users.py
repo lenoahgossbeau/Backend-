@@ -47,7 +47,7 @@ def list_users(
     role: str = Query(None),
     status: str = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100)
+    per_page: int = Query(100, ge=1, le=200)  # ✅ Changé de 10 à 100
 ):
     if current_user.role not in ["admin", "super_admin"]:
         raise HTTPException(status_code=403, detail="Accès réservé aux administrateurs")
@@ -131,7 +131,7 @@ def create_user(
 
     if not is_admin_role:
         token = create_activation_token(new_user.email)
-        activation_link = f"http://localhost:8000/auth/activate?token={token}"
+        activation_link = f"http://localhost:3000/auth/activate?token={token}"
         print(f"\n🔗 LIEN D'ACTIVATION POUR {new_user.email} :\n{activation_link}\n")
         return {"message": "Chercheur créé avec succès. Un email d'activation lui a été envoyé.", "user_id": new_user.id}
     else:
